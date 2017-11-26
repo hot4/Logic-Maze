@@ -24,15 +24,20 @@
                               	         	   writePath(Path).
 
 % Click button and move current location to some other valid location while clearing visited list
-	currentLocation(X, Y, Path, _, Buttons) :- clickButton(Buttons, X, Y),
+	currentLocation(X, Y, Path, _, Buttons) :- \+ checkType(a),
+											   clickButton(Buttons, X, Y),
 									   		   append(Buttons, [[X, Y]], ButtonsN),
 									           step(X, Y, Path, [[X, Y]], ButtonsN).
 
 % Move current location to some other valid location only only if 
 %     current location is not a button and buttons have been clicked in the proper order 
-	currentLocation(X, Y, Path, Visited, Buttons) :- \+ button(X, Y, _),
+	currentLocation(X, Y, Path, Visited, Buttons) :- checkType(c),
+													 \+ button(X, Y, _),
 													 btnOrder(Buttons, 1),
                                                      step(X, Y, Path, Visited, Buttons).
+
+    currentLocation(X, Y, Path, Visited, Buttons) :- \+ checkType(c),
+    												 step(X, Y, Path, Visited, Buttons).                                                     
 
 % Movement Horne clauses for valid locations -------------------------------------------------------------------------
 % Move North and add coordinates to path and visited lists
@@ -64,6 +69,9 @@
          				 		  		  currentLocation(XW, Y, PathN, VisitedN, Buttons).
  
 % Helper Horne clauses -----------------------------------------------------------------------------------------------
+% Check the test type of maze
+	checkType(Type) :- info(_, _, Type).
+
 % Check if within board
 	withinBoard(X, Y) :- info(Width, Height, _),
 	                     X < Width,
@@ -106,6 +114,11 @@
 
 % Goal Horne Clauses -------------------------------------------------------------------------------------------------
 % Check if location is the goal and all the buttons have been clicked
-	finish(Buttons, X, Y) :- goal(X, Y),
+% For test types b and c
+	finish(Buttons, X, Y) :- \+ checkType(a),
+							 goal(X, Y),
 							 num_buttons(Amt),
 							 len(Buttons, Amt).
+% For test type a
+    finish(_, X, Y) :- checkType(a), 
+    	               goal(X, Y).
