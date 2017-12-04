@@ -43,7 +43,7 @@ main :-
     read_file(Str,Lines),
     %Convert the lines in file to an list of sentences that are lists of words
     lines_to_words(Lines, Words),
-    close(Str),
+    close(Str), !,
 
     % Open the stream to the output file and check the sentences
     open('NL-parse-solution.txt', write, Stream),
@@ -71,35 +71,31 @@ lines_to_words([H|T], [H2|T2]) :-
 	lines_to_words(T, T2).
 
 % Checking the sentences to make sure they are in the correct structure --------------------------------------
-% Used to go through the list of sentences and checking if they are valid sentences
-% Only checks one sentence at a time (because if it is not a valid move then stop parsing sentences)
+/* Used to go through the list of sentences and checking if they are valid sentences
+   Only checks one sentence at a time (because need to know new mouse location if mouse moves and
+                                        if it is not a valid move then stop parsing sentences) */
 checkSentences([], _, _, _) :- true.
 checkSentences([H|T], X, Y, Stream) :- isSentence(H, X, Y, Stream, T).
-%% checkSentences([H|T], X, Y, Stream) :- isSentence(H, X, Y, Stream, T), isValidMove(X, Y), checkSentences(T, X, Y, Stream).
 
 % Check if the list of words is a sentence (must be in the form for moving the mouse or pressing a button)
 % Takes in a list of words, the current X and Y position of the mouse, the output stream and the rest of the sentences to look at
 isSentence(S, X, Y, Stream, RestofSents) :- (isMovingSentence(S, X, Y, Stream, RestofSents); 
-                                             isButtonSentence(S, X, Y, Stream, RestofSents)), write(Stream, "heeeere"),
+                                             isButtonSentence(S, X, Y, Stream, RestofSents)), 
                                             !.
-isSentence(_, _, _, Stream) :- write(Stream, "Not a valid sentence."), nl(Stream).
+isSentence(_, X, Y, Stream, RestofSents) :- write(Stream, "Not a valid sentence"), 
+                                            nl(Stream), 
+                                            checkSentences(RestofSents, X, Y, Stream).
 
 % Check if the given list of words is a sentence in the structure for moving Einstein
 % If it is, then check if it is a valid move
 % Takes in a list of words, an X and Y position of the mouse, the output stream and the rest of the sentences to look at
-isMovingSentence(S, X, Y, Stream, RestofSents) :- write(Stream, S), 
-                                                  nl(Stream),
-                                                  write(Stream, X), write(Stream, Y), nl(Stream),
-                                                  sentence(Num, Dir, S, []), 
-                                                  write(Stream, S), 
-                                                  nl(Stream), 
+isMovingSentence(S, X, Y, Stream, RestofSents) :- sentence(Num, Dir, S, []), 
                                                   moveMouse(Num, Dir, X, Y, Stream, RestofSents).
-                                                  %% checkSentences(RestofSents, X, Y, Stream).
 
 % Check if the given list of words is a sentence in the structure for pressing a button
 % If it is, then check is it is a valid move by trying to press a button at the given location
 % Takes in a list of words, an X and Y position of the mouse, the output stream and the rest of the sentences to look at
-isButtonSentence(S, X, Y, Stream, RestofSents) :- write(Stream, S), nl(Stream), sentence(S, []), write(Stream, S), nl(Stream),
+isButtonSentence(S, X, Y, Stream, RestofSents) :- sentence(S, []),
                                                   pressButton(X,Y, Stream, RestofSents).
 
 % Checking if the sentence is a valid move --------------------------------------------------------------
@@ -107,31 +103,50 @@ isButtonSentence(S, X, Y, Stream, RestofSents) :- write(Stream, S), nl(Stream), 
 % Takes in the current location of the mouse as an X and Y position, the output stream and the rest of the sentences to look at
 % If this is not a valid move, then stop parsing sentences
 pressButton(X, Y, Stream, RestofSents) :- button(X, Y, _), !, 
-                                          write(Stream, "Pressed button!"), 
-                                          nl(Stream), 
+                                          write(Stream, "Valid move"), 
+                                          nl(Stream),
                                           checkSentences(RestofSents, X, Y, Stream).
-pressButton(_, _, Stream, _) :- write(Stream, "No button to press here."), nl(Stream).
+pressButton(_, _, Stream, _) :- write(Stream, "Not a valid move"), nl(Stream).
 
 % Determines how to move the mouse based on the sentence and checks if it is a valid move
 % If this is not a valid move, then stop parsing sentences
-moveMouse(Num, Dir, X, Y, Stream, RestofSents) :- write(Stream, Num), nl(Stream), step(Num, Dir, X, Y, Stream, RestofSents), !.
-moveMouse(Num, Dir, X, Y, Stream, RestofSents) :- write(Stream, X), write(Stream, Y), write(Stream, " "), write(Stream, Num), write(Stream, Dir), write(Stream, RestofSents), nl(Stream), write(Stream, "Can't move mouse!"), nl(Stream).
+moveMouse(Num, Dir, X, Y, Stream, RestofSents) :- step(Num, Dir, X, Y, Stream, RestofSents), !.
+moveMouse(_, _, _, _, Stream, _) :- write(Stream, "Not a valid move"),
+                                    nl(Stream).
 
 % Base case for recursive stepping 1 cell at a time
 % If was able to make it to them end then this is a valid move so go check the next sentence
-step(0, _, X, Y, Stream, RestofSents) :- write(Stream, X), write(Stream, Y), write(Stream, "Valid move"), nl(Stream), checkSentences(RestofSents, X, Y, Stream).
+step(0, _, X, Y, Stream, RestofSents) :- write(Stream, "Valid move"), 
+                                         nl(Stream),
+                                         checkSentences(RestofSents, X, Y, Stream).
 
 % Moving the mouse 1 cell up
-step(Num, Dir, X, Y, Stream, RestofSents) :- write(Stream, "trying to move up"), Dir == up, YN is Y-1, validLocation(X,YN), NumLeft is Num-1, step(NumLeft, Dir, X, YN, Stream, RestofSents).
+step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == up, 
+                                             YN is Y-1, 
+                                             validLocation(X,YN), 
+                                             NumLeft is Num-1, !, 
+                                             step(NumLeft, Dir, X, YN, Stream, RestofSents).
 
 % Moving the mouse 1 cell down
-step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == down, YS is Y+1, validLocation(X,YS), NumLeft is Num-1, step(NumLeft, Dir, X, YS, Stream, RestofSents).
+step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == down, 
+                                             YS is Y+1, 
+                                             validLocation(X,YS), 
+                                             NumLeft is Num-1, !, 
+                                             step(NumLeft, Dir, X, YS, Stream, RestofSents).
 
 % Moving the mouse 1 cell right
-step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == right, XR is X+1, validLocation(XR,Y), NumLeft is Num-1, step(NumLeft, Dir, XR, Y, Stream, RestofSents).
+step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == right, 
+                                             XR is X+1, 
+                                             validLocation(XR,Y), 
+                                             NumLeft is Num-1, !, 
+                                             step(NumLeft, Dir, XR, Y, Stream, RestofSents).
 
 % Moving the mouse 1 cell left
-step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == left, XL is X-1, validLocation(XL,Y), NumLeft is Num-1, step(NumLeft, Dir, XL, Y, Stream, RestofSents). 
+step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == left, 
+                                             XL is X-1, 
+                                             validLocation(XL,Y), 
+                                             NumLeft is Num-1, !, 
+                                             step(NumLeft, Dir, XL, Y, Stream, RestofSents). 
 
 % Checks if the given location is inside the board and not a wall
 validLocation(X, Y) :- withinBoard(X, Y), 
