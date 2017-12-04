@@ -43,13 +43,12 @@ main :-
     read_file(Str,Lines),
     %Convert the lines in file to an list of sentences that are lists of words
     lines_to_words(Lines, Words),
-    close(Str), !,
+    close(Str), 
 
     % Open the stream to the output file and check the sentences
     open('NL-parse-solution.txt', write, Stream),
     start(X,Y),
     checkSentences(Words, X, Y, Stream),
-    %% write(Stream, Words),
     close(Stream), !.
 
 
@@ -70,10 +69,9 @@ lines_to_words([H|T], [H2|T2]) :-
 	split_string(H, " ", "", H2),
 	lines_to_words(T, T2).
 
-% Checking the sentences to make sure they are in the correct structure --------------------------------------
-/* Used to go through the list of sentences and checking if they are valid sentences
-   Only checks one sentence at a time (because need to know new mouse location if mouse moves and
-                                        if it is not a valid move then stop parsing sentences) */
+% Checking the sentences to make sure they are in the correct structure --------------------------------------------------
+% Used to go through the list of sentences and checking if they are valid sentences
+% Only checks one sentence at a time (because need to know new mouse location if mouse moves) 
 checkSentences([], _, _, _) :- true.
 checkSentences([H|T], X, Y, Stream) :- isSentence(H, X, Y, Stream, T).
 
@@ -98,50 +96,53 @@ isMovingSentence(S, X, Y, Stream, RestofSents) :- sentence(Num, Dir, S, []),
 isButtonSentence(S, X, Y, Stream, RestofSents) :- sentence(S, []),
                                                   pressButton(X,Y, Stream, RestofSents).
 
-% Checking if the sentence is a valid move --------------------------------------------------------------
+% Checking if the sentence is a valid move -------------------------------------------------------------------------------
 % Checking if the mouse is on a button to press
-% Takes in the current location of the mouse as an X and Y position, the output stream and the rest of the sentences to look at
 % If this is not a valid move, then stop parsing sentences
+% Takes in the current location of the mouse as an X and Y position, the output stream and the rest of the sentences to look at
 pressButton(X, Y, Stream, RestofSents) :- button(X, Y, _), !, 
                                           write(Stream, "Valid move"), 
                                           nl(Stream),
                                           checkSentences(RestofSents, X, Y, Stream).
-pressButton(_, _, Stream, _) :- write(Stream, "Not a valid move"), nl(Stream).
+pressButton(_, _, Stream, _) :- write(Stream, "Not a valid move"), 
+                                nl(Stream).
 
-% Determines how to move the mouse based on the sentence and checks if it is a valid move
+% Determines if this is a valid move by steping through the maze and checking if each spot is valid
 % If this is not a valid move, then stop parsing sentences
+% Takes in the number of spaces to move, the direction to move in, the current mouse position, the output stream and 
+% the rest of the sentences to look at
 moveMouse(Num, Dir, X, Y, Stream, RestofSents) :- step(Num, Dir, X, Y, Stream, RestofSents), !.
 moveMouse(_, _, _, _, Stream, _) :- write(Stream, "Not a valid move"),
                                     nl(Stream).
 
 % Base case for recursive stepping 1 cell at a time
-% If was able to make it to them end then this is a valid move so go check the next sentence
+% If was able to make it to the end then this is a valid move so go check the next sentence
 step(0, _, X, Y, Stream, RestofSents) :- write(Stream, "Valid move"), 
                                          nl(Stream),
                                          checkSentences(RestofSents, X, Y, Stream).
 
-% Moving the mouse 1 cell up
+% Moving the mouse 1 cell up if that cell is a valid position
 step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == up, 
                                              YN is Y-1, 
                                              validLocation(X,YN), 
                                              NumLeft is Num-1, !, 
                                              step(NumLeft, Dir, X, YN, Stream, RestofSents).
 
-% Moving the mouse 1 cell down
+% Moving the mouse 1 cell down if that cell is a valid position
 step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == down, 
                                              YS is Y+1, 
                                              validLocation(X,YS), 
                                              NumLeft is Num-1, !, 
                                              step(NumLeft, Dir, X, YS, Stream, RestofSents).
 
-% Moving the mouse 1 cell right
+% Moving the mouse 1 cell right if that cell is a valid position
 step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == right, 
                                              XR is X+1, 
                                              validLocation(XR,Y), 
                                              NumLeft is Num-1, !, 
                                              step(NumLeft, Dir, XR, Y, Stream, RestofSents).
 
-% Moving the mouse 1 cell left
+% Moving the mouse 1 cell left if that cell is a valid position
 step(Num, Dir, X, Y, Stream, RestofSents) :- Dir == left, 
                                              XL is X-1, 
                                              validLocation(XL,Y), 
